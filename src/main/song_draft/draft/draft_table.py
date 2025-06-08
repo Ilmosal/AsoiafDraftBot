@@ -5,7 +5,7 @@ import logging
 import random
 
 from draft.card_pool import CardPool
-from draft.player import BotPlayer, TermPlayer
+from draft.player import BotPlayer, TermPlayer, DiscordPlayer
 from draft.booster import Booster
 
 class DraftTable():
@@ -17,16 +17,25 @@ class DraftTable():
         self.players = []
         self.boosters = []
         self.stage_boosters = []
-        self.booster_size = 11
+        self.booster_size = -1
         self.allow_bots = allow_bots
 
         self.has_picked = None
+        self.turn = -1
+        self.direction = 0
 
         self.draft_stage = 0
 
         logging.info("Table initialized!")
 
-    def join_player(self, player_name, term_player=False):
+    def get_players(self):
+        pl = []
+        for p in self.players:
+            if isinstance(p, DiscordPlayer):
+                pl.append(p)
+        return pl
+
+    def join_player(self, player_name, term_player=False, author=None):
         if player_name in [player.name for player in self.players]:
             raise Exception("Player {0} already in the table!".format(player_name))
 
@@ -36,7 +45,11 @@ class DraftTable():
         if self.draft_stage != 0:
             raise Exception("Cannot join players after draft has started!")
 
-        player = TermPlayer(player_name)
+        if term_player:
+            player = TermPlayer(player_name)
+        else:
+            player = DiscordPlayer(player_name, author=author)
+
         self.players.append(player)
         logging.info("Added player {0}".format(player_name))
 
@@ -55,10 +68,10 @@ class DraftTable():
         logging.info("Added bot {0}".format(bot_name))
 
     def remove_player(self, player_name):
-        if player_name not in self.players.keys():
+        if player_name not in [p.name for p in self.players]:
             raise Exception("Player {0} not in the draft table".format(player_name))
 
-        if draft_stage != 0:
+        if self.draft_stage != 0:
             raise Exception("Cannot remove players after draft has started!")
 
         for i in range(len(self.players)):
@@ -66,7 +79,6 @@ class DraftTable():
                 self.players.pop(i)
                 break
 
-        self.players.pop(player_name)
         logging.info("Removed player {0}".format(player_name))
 
     def create_boosters(self):
@@ -94,8 +106,9 @@ class DraftTable():
                 logging.info("Created booster:")
                 logging.info(booster)
                 logging.info("-----")
+        self.booster_size = len(self.boosters[0].get_cards())
 
-    def start_draft(self):
+    async def start_draft(self):
         if len(self.players) != self.player_count and not self.allow_bots:
             raise Exception("Table not full!")
 
@@ -116,22 +129,17 @@ class DraftTable():
         for i in range(self.player_count):
             self.stage_boosters.append(self.boosters.pop(0))
 
+        self.turn = 0
+        self.direction = 1
+
         # Give options
-        self.draft_turn(turn = 0, direction=1)
+        await self.draft_turn()
 
-    def draft_turn(self, turn, direction):
-        logging.info("Starting Round {0} - Turn {1}".format(self.draft_stage, turn+1))
-        self.has_picked = [False]*self.player_count
-
-        for i in range(self.player_count):
-            answer = self.players[i].make_choice(self.stage_boosters[(i+turn*direction) % self.player_count])
-            if answer:
-                self.has_picked[i] = True
-
+    async def trigger_next_round(self):
         if not (False in self.has_picked):
-            if self.booster_size == turn+1:
+            if self.booster_size == self.turn+1:
                 if self.draft_stage == 2:
-                    self.end_draft()
+                    await self.end_draft()
                 else:
                     self.stage_boosters.clear()
                     for i in range(self.player_count):
@@ -139,17 +147,64 @@ class DraftTable():
                     logging.info("Allocating new boosters")
 
                     self.draft_stage = 2
-                    self.draft_turn(turn=0, direction=-1*direction)
+                    self.turn = 0
+                    self.direction = -1 * self.direction
+                    await self.draft_turn()
             else:
-                self.draft_turn(turn+1, direction)
+                self.turn += 1
+                await self.draft_turn()
 
-    def end_draft(self):
-        logging.info("Draft ended")
-        logging.info("------")
 
+    async def draft_turn(self):
+        print("Starting Round {0} - Turn {1}".format(self.draft_stage, self.turn+1))
+        self.has_picked = [False]*self.player_count
+
+        for i in range(self.player_count):
+            answer = await self.players[i].make_choice(self.stage_boosters[(i+self.turn*self.direction) % self.player_count])
+            if answer:
+                self.has_picked[i] = True
+
+        await self.trigger_next_round()
+
+    async def pick_card_for_player(self, player_name, card):
+        player_id = -1
+
+        for i in range(len(self.players)):
+            if player_name == self.players[i].name:
+                player_id = i
+                break
+
+        if player_id == -1:
+            raise Exception("You are not part of the draft!")
+
+        if self.has_picked[player_id]:
+            raise Exception("You have already picked a card!")
+
+        b = self.stage_boosters[(i+self.turn*self.direction) % self.player_count]
+
+        if card-1 < 0 or card > len(b.get_cards()):
+            raise Exception("Card id out of range: {0}".format(card))
+
+        self.players[player_id].choose_card(b.pick_card(card-1))
+        self.has_picked[player_id] = True
+        await self.trigger_next_round()
+
+    async def end_draft(self):
         for player in self.players:
-            logging.info(str(player))
-            logging.info("------")
+            await player.trigger_end_message()
+
+    async def show_player_cards(self, player_name, condensed):
+        player_id = -1
+
+        for i in range(len(self.players)):
+            if player_name == self.players[i].name:
+                player_id = i
+                break
+
+        if player_id == -1:
+            raise Exception("You are not part of the draft!")
+
+        await self.players[player_id].show_cards(condensed)
 
     def __str__(self):
         dt_str = "Draft: {0}\n".format(self.draft_table_id)
