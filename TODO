@@ -1,0 +1,14 @@
+TODO
+----
+- Write tests for drafting 
+- Figure out the outline for how the bot should work
+- Write the bot on top of the drafting logic
+
+COMPLETED
+---------
+- create the general architecture for the bot
+- Create the draft data
+- Write card logic
+- Write booster logic
+- Write player logic
+- Write draft logic
