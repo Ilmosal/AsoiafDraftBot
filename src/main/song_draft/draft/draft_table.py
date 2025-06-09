@@ -25,8 +25,15 @@ class DraftTable():
         self.direction = 0
 
         self.draft_stage = 0
+        self.main_channel = None
 
         logging.info("Table initialized!")
+
+    def set_main_channel(self, main_channel):
+        self.main_channel = main_channel
+
+    def can_start_draft(self):
+        return len(self.players) == self.player_count or self.allow_bots
 
     def get_players(self):
         pl = []
@@ -48,7 +55,7 @@ class DraftTable():
         if term_player:
             player = TermPlayer(player_name)
         else:
-            player = DiscordPlayer(player_name, author=author)
+            player = DiscordPlayer(player_name, author=author, dt=self)
 
         self.players.append(player)
         logging.info("Added player {0}".format(player_name))
@@ -88,19 +95,16 @@ class DraftTable():
         card_pool = CardPool()
 
         for p in self.players:
-            for i in range(2):
+            for i in range(3): # Amount of turns
                 booster = Booster()
                 booster.add_card(card_pool.pull_rare())
                 booster.add_card(card_pool.pull_tcs())
-                booster.add_card(card_pool.pull_tcs())
-                booster.add_card(card_pool.pull_cu())
-                booster.add_card(card_pool.pull_cu())
-                booster.add_card(card_pool.pull_cu())
-                booster.add_card(card_pool.pull_ncu())
-                booster.add_card(card_pool.pull_ncu())
-                booster.add_card(card_pool.pull_att())
-                booster.add_card(card_pool.pull_att())
                 booster.add_card(card_pool.pull_cmd())
+                booster.add_card(card_pool.pull_ncu())
+                booster.add_card(card_pool.pull_cu())
+                booster.add_card(card_pool.pull_cu())
+                booster.add_card(card_pool.pull_att())
+                booster.add_card(card_pool.pull_att())
 
                 self.boosters.append(booster)
                 logging.info("Created booster:")
@@ -138,7 +142,7 @@ class DraftTable():
     async def trigger_next_round(self):
         if not (False in self.has_picked):
             if self.booster_size == self.turn+1:
-                if self.draft_stage == 2:
+                if self.draft_stage == 3:
                     await self.end_draft()
                 else:
                     self.stage_boosters.clear()
@@ -146,7 +150,7 @@ class DraftTable():
                         self.stage_boosters.append(self.boosters.pop(0))
                     logging.info("Allocating new boosters")
 
-                    self.draft_stage = 2
+                    self.draft_stage += 1
                     self.turn = 0
                     self.direction = -1 * self.direction
                     await self.draft_turn()
@@ -160,7 +164,7 @@ class DraftTable():
         self.has_picked = [False]*self.player_count
 
         for i in range(self.player_count):
-            answer = await self.players[i].make_choice(self.stage_boosters[(i+self.turn*self.direction) % self.player_count])
+            answer = await self.players[i].make_choice(self.stage_boosters[(i+self.turn*self.direction) % self.player_count], self.draft_stage, self.turn+1)
             if answer:
                 self.has_picked[i] = True
 
@@ -185,13 +189,17 @@ class DraftTable():
         if card-1 < 0 or card > len(b.get_cards()):
             raise Exception("Card id out of range: {0}".format(card))
 
+        await self.players[player_id].remove_buttons()
+
         self.players[player_id].choose_card(b.pick_card(card-1))
         self.has_picked[player_id] = True
         await self.trigger_next_round()
 
     async def end_draft(self):
+        await self.main_channel.send("# Draft has ended!\nHere are the drafted pools of the players!")
+
         for player in self.players:
-            await player.trigger_end_message()
+            await player.trigger_end_message(self.main_channel)
 
     async def show_player_cards(self, player_name, condensed):
         player_id = -1

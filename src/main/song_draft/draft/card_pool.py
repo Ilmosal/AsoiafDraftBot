@@ -18,7 +18,8 @@ class CardPool():
         self.atts = []
 
         pool_data = []
-        with open("../resources/draft_data.csv", 'r') as draft_data_file:
+
+        with open("draft_data.csv", 'r') as draft_data_file:
             reader = csv.reader(draft_data_file, delimiter=",")
             for row in reader:
                 pool_data.append(list(row))
@@ -27,21 +28,23 @@ class CardPool():
 
         # create tactics cards
         for r in range(row_len):
-            card_str = pool_data[r][0]
-            if card_str == "":
+            card_str = pool_data[r][0].split('/')
+            if card_str[0] == '':
                 continue
 
-            card_ids = pool_data[r][1].split(',')
-            new_card = Card(card_str, card_ids, card_type="tc")
+            card_ids = pool_data[r][1].split('/')
+            card_costs = pool_data[r][2].split('/')
+            new_card = Card(card_str, card_ids, card_costs, card_type="tc")
             self.tcs.append(new_card)
 
         # create rares
         for r in range(row_len):
-            card_str = pool_data[r][2]
-            if card_str == "":
+            card_str = pool_data[r][3].split('/')
+            if card_str[0] == '':
                 continue
 
-            card_ids = pool_data[r][3].split(',')
+            card_ids = pool_data[r][4].split('/')
+            card_costs = pool_data[r][5].split('/')
             card_t = ""
             match r % 3:
                 case 0:
@@ -51,48 +54,53 @@ class CardPool():
                 case 2:
                     card_t = "cmd"
 
-            new_card = Card(card_str, card_ids, card_type=card_t)
+            new_card = Card(card_str, card_ids, card_costs, card_type=card_t)
             self.rares.append(new_card)
 
         # create combat units
         for r in range(row_len):
-            card_str = pool_data[r][4]
-            if card_str == "":
+            card_str = pool_data[r][6].split('/')
+            if card_str[0] == '':
                 continue
 
-            card_ids = pool_data[r][5].split(',')
-            new_card = Card(card_str, card_ids, card_type="cu")
+            card_ids = pool_data[r][7].split('/')
+            card_costs = pool_data[r][8].split('/')
+            new_card = Card(card_str, card_ids, card_costs, card_type="cu")
             self.cus.append(new_card)
 
         # create NCUS
         for r in range(row_len):
-            card_str = pool_data[r][6]
-            if card_str == "":
+            card_str = pool_data[r][9].split('/')
+            if card_str[0] == '':
                 continue
 
-            card_ids = pool_data[r][7].split(',')
-            new_card = Card(card_str, card_ids, card_type="ncu")
+            card_ids = pool_data[r][10].split('/')
+            card_costs = pool_data[r][11].split('/')
+            new_card = Card(card_str, card_ids, card_costs, card_type="ncu")
             self.ncus.append(new_card)
 
         # create attachments
         for r in range(row_len):
-            card_str = pool_data[r][8]
-            if card_str == "":
+            card_str = pool_data[r][12].split('/')
+            if card_str[0] == '':
                 continue
 
-            card_ids = pool_data[r][9].split(',')
-            new_card = Card(card_str, card_ids, card_type="att")
+            card_ids = pool_data[r][13].split('/')
+            card_costs = pool_data[r][14].split('/')
+            new_card = Card(card_str, card_ids, card_costs, card_type="att")
             self.atts.append(new_card)
 
         # create commanders
         for r in range(row_len):
-            card_str = pool_data[r][10]
-            if card_str == "":
+            card_str = pool_data[r][15].split('/')
+            if card_str[0] == '':
                 continue
 
-            card_ids = pool_data[r][11].split(',')
-            new_card = Card(card_str, card_ids, card_type="cmd")
+            card_ids = pool_data[r][16].split('/')
+            card_costs = pool_data[r][17].split('/')
+            new_card = Card(card_str, card_ids, card_costs, card_type="cmd")
             self.cmds.append(new_card)
+
 
     def get_rares(self):
         return self.rares

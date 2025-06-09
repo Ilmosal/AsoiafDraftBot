@@ -28,21 +28,21 @@ class Player():
             plr_str += "\n{0}\n--------\n".format(card_type)
             for card in self.choices:
                 if card.card_type == card_type:
-                    plr_str += str(card) + "\n"
+                    plr_str += card.get_card_string() + "\n"
 
         return plr_str
 
-    async def make_choice(self, booster):
+    async def make_choice(self, booster, round_n, turn_n):
         raise Exception("Do not use the Player stub!")
 
-    async def trigger_end_message(self):
+    async def trigger_end_message(self, main = None):
         raise Exception("Do not use the Player stub!")
 
 class BotPlayer(Player):
     """
     Class for a dummy bot player that makes random choices
     """
-    async def make_choice(self, booster):
+    async def make_choice(self, booster, round_n, turn_n):
         """
         Make a random choice
         """
@@ -51,17 +51,17 @@ class BotPlayer(Player):
 
         return True
 
-    async def trigger_end_message(self):
+    async def trigger_end_message(self, main = None):
         pass
 
 class TermPlayer(Player):
     """
     Player playing through terminal for testing purposes
     """
-    async def make_choice(self, booster):
+    async def make_choice(self, booster, round_n, turn_n):
         incorrect_answer = True
 
-        print("Make a choice!")
+        print("# Round {0} - Pick {1} - {2} cards this pick\n".format(round_n, turn_n, 9-turn_n))
         print(booster)
 
         prompt = int(input())
@@ -69,17 +69,42 @@ class TermPlayer(Player):
         self.choose_card(booster.pick_card(prompt))
         return True
 
-    async def trigger_end_message(self):
-        print(player)
+    async def trigger_end_message(self, main = None):
+        print(self)
+
+class PickButton(discord.ui.View):
+    def __init__(self, player, card_id, dt):
+        self.player = player
+        self.card_id = card_id
+        super().__init__()
+        self.dt = dt
+
+    @discord.ui.button(label="Pick Card", style=discord.ButtonStyle.primary, row=0)
+    async def button_callback(self, button, interaction):
+        await self.dt.pick_card_for_player(self.player.name, self.card_id+1)
+        await interaction.response.send_message("Picked card! Waiting for others to pick their cards.")
+
+class ShowPlayerButton(discord.ui.View):
+    def __init__(self, player):
+        self.player = player
+        super().__init__()
+
+    @discord.ui.button(label="Show Cards", style=discord.ButtonStyle.success, row=0)
+    async def button_callback(self, button, interaction):
+        await self.player.show_cards(condensed=True)
+        await interaction.response.send_message("Here's the cards you have picked so far!")
 
 class DiscordPlayer(Player):
     """
     PLayer playing through discord.
     """
-    def __init__(self, name, author):
+    def __init__(self, name, author, dt):
         self.author = author
         super().__init__(name)
         self.thread = None
+        self.dt = dt
+        self.choices = []
+        self.button_choices = []
 
     def set_thread(self, thread):
         self.thread = thread
@@ -87,8 +112,41 @@ class DiscordPlayer(Player):
     def get_author(self):
         return self.author
 
+    async def remove_buttons(self):
+        for c_msg, choice in self.button_choices:
+            await choice.edit(view=None)
+
     async def show_cards(self, condensed):
-        await self.thread.send("Picked cards:")
+        msg = "# Picked cards:\n"
+        c_type_dict = {
+            'cmd': 'Commanders',
+            'tc': 'Tactics Cards',
+            'cu': 'Combat Unis',
+            'ncu': 'Non-Combat Units',
+            'att': 'Attachments'
+        }
+
+        if condensed:
+            for card_type in Card.card_types:
+                msg += "__**{0}**__:\n".format(c_type_dict[card_type])
+
+                for card in self.choices:
+                    if card.card_type == card_type:
+                        msg += " - " + card.get_card_string(with_link = False) + "\n"
+            await self.thread.send(msg)
+        else:
+            await self.thread.send(msg)
+            for card_type in Card.card_types:
+                msg = "__**{0}**__:".format(c_type_dict[card_type])
+                await self.thread.send(msg)
+
+                for card in self.choices:
+                    if card.card_type == card_type:
+                        await self.thread.send(card.get_card_string(with_link = True))
+
+    async def trigger_end_message(self, main = None):
+        msg = "# {0} Cards\n".format(self.name)
+
         c_type_dict = {
             'cmd': 'Commanders',
             'tc': 'Tactics Cards',
@@ -98,61 +156,22 @@ class DiscordPlayer(Player):
         }
 
         for card_type in Card.card_types:
-            msg = "{0}".format(c_type_dict[card_type])
-            await self.thread.send(msg)
+            msg += "__**{0}**__:\n".format(c_type_dict[card_type])
 
             for card in self.choices:
                 if card.card_type == card_type:
-                    msg = ""
-                    if condensed:
-                        msg += card.card_str
-                    else:
-                        for ci in card.card_ids:
-                            my_url = "https://asoiaf-stats.com/images/2025/{0}.jpg".format(ci.strip())
-                            msg += "[{0}]({1}) ".format(card.card_str, my_url)
+                    msg += " - " + card.get_card_string(with_link = False) + "\n"
 
-                    await self.thread.send(msg)
+        await main.send(msg)
 
-
-
-    async def trigger_end_message(self):
-        await self.thread.send("Picked cards:")
-        c_type_dict = {
-            'cmd': 'Commanders',
-            'tc': 'Tactics Cards',
-            'cu': 'Combat Unis',
-            'ncu': 'Non-Combat Units',
-            'att': 'Attachments'
-        }
-
-        for card_type in Card.card_types:
-            msg = "{0}".format(c_type_dict[card_type])
-            await self.thread.send(msg)
-
-            for card in self.choices:
-                if card.card_type == card_type:
-                    msg = ""
-                    for ci in card.card_ids:
-                        my_url = "https://asoiaf-stats.com/images/2025/{0}.jpg".format(ci.strip())
-                        msg += "[{0}]({1}) ".format(card.card_str, my_url)
-
-                    await self.thread.send(msg)
-
-    async def make_choice(self, booster):
-        choice_message = "Pick one option\n"
+    async def make_choice(self, booster, round_n, turn_n):
+        choice_message = "# Round {0} - Pick {1} - {2} cards this pick\n".format(round_n, turn_n, 9-turn_n)
         await self.thread.send(choice_message)
+        self.button_choices.clear()
 
         for card_i in range(len(booster.get_cards())):
-            choice_message = "Card {0}\n".format(card_i+1)
-            for card in booster.get_cards()[card_i].card_ids:
-                my_url = "https://asoiaf-stats.com/images/2025/{0}.jpg".format(card.strip())
-                choice_message += "[{0}]({1}) ".format(card, my_url)
-            await self.thread.send(choice_message)
+            choice_message = "__**Card {0}**__\n".format(card_i+1)
+            choice_message += booster.get_cards()[card_i].get_card_string(with_link=True)
+            self.button_choices.append([choice_message, await self.thread.send(choice_message, view=PickButton(player=self, card_id=card_i, dt=self.dt))])
 
-#            for comp in booster.get_cards()[card_i].card_ids:
-#                my_url = "https://asoiaf-stats.com/images/2025/{0}.jpg".format(comp.strip())
-#                async with aiohttp.ClientSession() as session:
-#                    async with session.get(my_url) as resp:
-#                        data = io.BytesIO(await resp.read())
-#                        await self.thread.send(file=discord.File(data, '{0}.jpg'.format(comp.strip())))
-
+        await self.thread.send("Show picked cards", view=ShowPlayerButton(player=self))
