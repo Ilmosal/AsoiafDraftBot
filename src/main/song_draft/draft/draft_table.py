@@ -26,8 +26,37 @@ class DraftTable():
 
         self.draft_stage = 0
         self.main_channel = None
+        self.start_message = None
 
         logging.info("Table initialized!")
+
+    async def update_start_message(self):
+        msg_str = "# Game name: {0} - Player count: {1}/{2}\n".format(self.draft_table_id, len(self.get_players()), self.player_count)
+        for i in range(self.player_count):
+            plr_name = ""
+            plr_id = -1
+
+            try:
+                plr_name = self.get_players()[i].name
+
+                for i in range(len(self.players)):
+                    if plr_name == self.players[i].name:
+                        plr_id = i
+                        break
+            except:
+                pass
+
+            msg_str += "**{0}**. {1}".format(i+1, plr_name.capitalize())
+
+            if self.draft_stage != 0 and plr_id != -1:
+                if self.has_picked[plr_id]:
+                    msg_str += " has picked!"
+                else:
+                    msg_str += " is picking..."
+
+            msg_str += "\n"
+
+        await self.start_message.edit(msg_str)
 
     def set_main_channel(self, main_channel):
         self.main_channel = main_channel
@@ -166,6 +195,7 @@ class DraftTable():
                 self.turn += 1
                 await self.draft_turn()
 
+        await self.update_start_message()
 
     async def draft_turn(self):
         print("Starting Round {0} - Turn {1}".format(self.draft_stage, self.turn+1))

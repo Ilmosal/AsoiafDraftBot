@@ -30,7 +30,7 @@ async def create_draft(ctx, game_name : str, player_count : int, allow_bots : bo
     await ctx.respond(msg)
     bot.ongoing_draft_category = await ctx.guild.create_category_channel("{0}_draft".format(game_name))
     bot.ongoing_draft_channel = await ctx.guild.create_text_channel('main', category = bot.ongoing_draft_category)
-    bot.ongoing_draft_start_message = await bot.ongoing_draft_channel.send(utils.table_status(bot.ongoing_draft))
+    bot.ongoing_draft.start_message = await bot.ongoing_draft_channel.send(utils.table_status(bot.ongoing_draft))
     bot.ongoing_draft.set_main_channel(bot.ongoing_draft_channel)
 
 @bot.slash_command()
@@ -43,7 +43,7 @@ async def join(ctx):
         msg += "Issue with joining game: {0}".format(e)
 
     await ctx.respond(msg)
-    await bot.ongoing_draft_start_message.edit(utils.table_status(bot.ongoing_draft))
+    await bot.ongoing_draft.update_start_message()
 
 @bot.slash_command()
 async def remove(ctx, name : str):
@@ -84,6 +84,7 @@ async def start_draft(ctx):
         bot.ongoing_draft_player_threads[p.name] = player_thread
         p.set_thread(player_thread)
 
+    await bot.ongoing_draft.update_start_message()
     await bot.ongoing_draft.start_draft()
 
 @bot.slash_command()
