@@ -97,14 +97,22 @@ class DraftTable():
         for p in self.players:
             for i in range(3): # Amount of turns
                 booster = Booster()
-                booster.add_card(card_pool.pull_rare())
-                booster.add_card(card_pool.pull_tcs())
+
                 booster.add_card(card_pool.pull_cmd())
+                booster.add_card(card_pool.pull_tcs())
+                booster.add_card(card_pool.pull_cu())
                 booster.add_card(card_pool.pull_ncu())
-                booster.add_card(card_pool.pull_cu())
-                booster.add_card(card_pool.pull_cu())
                 booster.add_card(card_pool.pull_att())
-                booster.add_card(card_pool.pull_att())
+                for i in range(2): # Add two random cards
+                    match random.randint(1,4):
+                        case 1:
+                            booster.add_card(card_pool.pull_cu())
+                        case 2:
+                            booster.add_card(card_pool.pull_cu())
+                        case 3:
+                            booster.add_card(card_pool.pull_ncu())
+                        case 4:
+                            booster.add_card(card_pool.pull_att())
 
                 self.boosters.append(booster)
                 logging.info("Created booster:")
@@ -196,7 +204,11 @@ class DraftTable():
         await self.trigger_next_round()
 
     async def end_draft(self):
-        await self.main_channel.send("# Draft has ended!\nHere are the drafted pools of the players!")
+        msg = "# Draft has ended!\nHere are the drafted pools of the players!"
+        if self.main_channel is None:
+            print(msg[2:])
+        else:
+            await self.main_channel.send(msg)
 
         for player in self.players:
             await player.trigger_end_message(self.main_channel)

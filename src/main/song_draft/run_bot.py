@@ -88,13 +88,16 @@ async def start_draft(ctx):
 
 @bot.slash_command()
 async def show_cards(ctx, condensed: bool = True):
+    await ctx.interaction.response.defer()
     try:
         await bot.ongoing_draft.show_player_cards(player_name = ctx.author.name, condensed = condensed)
+        ctx.respond("Cards shown!")
     except Exception as e:
         await ctx.respond("Something went wrong with the command: {0}".format(e))
 
 @bot.slash_command()
 async def clear_game(ctx):
+    await ctx.respond("Clearing game!")
     if bot.ongoing_draft_channel is None:
         await ctx.respond("There are no active games!")
     else:
@@ -110,14 +113,13 @@ async def clear_game(ctx):
         bot.ongoing_draft_channel = None
         bot.ongoing_draft_player_threads = None
         bot.ongoing_draft_start_message = None
-        await ctx.respond("Game cleared!")
 
 @bot.slash_command()
 async def pick_card(ctx, card: int):
+    await ctx.interaction.response.defer()
     try:
         await bot.ongoing_draft.pick_card_for_player(ctx.author.name, card)
         await ctx.respond("Card picked!")
-
     except Exception as e:
         await ctx.respond("Something went wrong with the pick: {0}".format(e))
 

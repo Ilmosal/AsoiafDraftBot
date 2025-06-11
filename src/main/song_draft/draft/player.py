@@ -61,7 +61,7 @@ class TermPlayer(Player):
     async def make_choice(self, booster, round_n, turn_n):
         incorrect_answer = True
 
-        print("# Round {0} - Pick {1} - {2} cards this pick\n".format(round_n, turn_n, 9-turn_n))
+        print("# Round {0} - Pick {1} - {2} cards this pick\n".format(round_n, turn_n, 8-turn_n))
         print(booster)
 
         prompt = int(input())
@@ -81,8 +81,8 @@ class PickButton(discord.ui.View):
 
     @discord.ui.button(label="Pick Card", style=discord.ButtonStyle.primary, row=0)
     async def button_callback(self, button, interaction):
+        await interaction.response.defer()
         await self.dt.pick_card_for_player(self.player.name, self.card_id+1)
-        await interaction.response.send_message("Picked card! Waiting for others to pick their cards.")
 
 class ShowPlayerButton(discord.ui.View):
     def __init__(self, player):
@@ -91,8 +91,8 @@ class ShowPlayerButton(discord.ui.View):
 
     @discord.ui.button(label="Show Cards", style=discord.ButtonStyle.success, row=0)
     async def button_callback(self, button, interaction):
+        await interaction.response.defer()
         await self.player.show_cards(condensed=True)
-        await interaction.response.send_message("Here's the cards you have picked so far!")
 
 class DiscordPlayer(Player):
     """
@@ -165,7 +165,7 @@ class DiscordPlayer(Player):
         await main.send(msg)
 
     async def make_choice(self, booster, round_n, turn_n):
-        choice_message = "# Round {0} - Pick {1} - {2} cards this pick\n".format(round_n, turn_n, 9-turn_n)
+        choice_message = "# Round {0} - Pick {1} - {2} cards this pick\n".format(round_n, turn_n, 8-turn_n)
         await self.thread.send(choice_message)
         self.button_choices.clear()
 

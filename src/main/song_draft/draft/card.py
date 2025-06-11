@@ -26,13 +26,13 @@ class Card():
             c_str = self.card_str[i]
             if self.card_costs[i].strip() != "-":
                 c_str += " - {0} pt".format(self.card_costs[i].strip())
+                if i+1 != len(self.card_str):
+                    ret_str += ", "
 
             if with_link:
-                c_str = "[{0}](https://asoiaf-stats.com/images/2025/{1}.jpg)".format(c_str, self.card_ids[i].strip())
+                c_str = "[{0}](https://asoiaf-stats.com/images/2025/{1}.jpg) ".format(c_str, self.card_ids[i].strip())
 
             ret_str += c_str
 
-            if i+1 != len(self.card_str):
-                ret_str += ", "
 
         return ret_str

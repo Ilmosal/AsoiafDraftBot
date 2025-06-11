@@ -6,6 +6,7 @@ from draft.card import Card
 
 import csv
 import random
+import copy
 
 class CardPool():
     def __init__(self, card_pool="default"):
@@ -37,7 +38,7 @@ class CardPool():
             new_card = Card(card_str, card_ids, card_costs, card_type="tc")
             self.tcs.append(new_card)
 
-        # create rares
+        # create combat units
         for r in range(row_len):
             card_str = pool_data[r][3].split('/')
             if card_str[0] == '':
@@ -45,19 +46,10 @@ class CardPool():
 
             card_ids = pool_data[r][4].split('/')
             card_costs = pool_data[r][5].split('/')
-            card_t = ""
-            match r % 3:
-                case 0:
-                    card_t = "cu"
-                case 1:
-                    card_t = "ncu"
-                case 2:
-                    card_t = "cmd"
+            new_card = Card(card_str, card_ids, card_costs, card_type="cu")
+            self.cus.append(new_card)
 
-            new_card = Card(card_str, card_ids, card_costs, card_type=card_t)
-            self.rares.append(new_card)
-
-        # create combat units
+        # create NCUS
         for r in range(row_len):
             card_str = pool_data[r][6].split('/')
             if card_str[0] == '':
@@ -65,10 +57,10 @@ class CardPool():
 
             card_ids = pool_data[r][7].split('/')
             card_costs = pool_data[r][8].split('/')
-            new_card = Card(card_str, card_ids, card_costs, card_type="cu")
-            self.cus.append(new_card)
+            new_card = Card(card_str, card_ids, card_costs, card_type="ncu")
+            self.ncus.append(new_card)
 
-        # create NCUS
+        # create attachments
         for r in range(row_len):
             card_str = pool_data[r][9].split('/')
             if card_str[0] == '':
@@ -76,10 +68,10 @@ class CardPool():
 
             card_ids = pool_data[r][10].split('/')
             card_costs = pool_data[r][11].split('/')
-            new_card = Card(card_str, card_ids, card_costs, card_type="ncu")
-            self.ncus.append(new_card)
+            new_card = Card(card_str, card_ids, card_costs, card_type="att")
+            self.atts.append(new_card)
 
-        # create attachments
+        # create commanders
         for r in range(row_len):
             card_str = pool_data[r][12].split('/')
             if card_str[0] == '':
@@ -87,20 +79,14 @@ class CardPool():
 
             card_ids = pool_data[r][13].split('/')
             card_costs = pool_data[r][14].split('/')
-            new_card = Card(card_str, card_ids, card_costs, card_type="att")
-            self.atts.append(new_card)
-
-        # create commanders
-        for r in range(row_len):
-            card_str = pool_data[r][15].split('/')
-            if card_str[0] == '':
-                continue
-
-            card_ids = pool_data[r][16].split('/')
-            card_costs = pool_data[r][17].split('/')
             new_card = Card(card_str, card_ids, card_costs, card_type="cmd")
             self.cmds.append(new_card)
 
+        self.store_tcs = copy.deepcopy(self.tcs)
+        self.store_ncus = copy.deepcopy(self.ncus)
+        self.store_cus = copy.deepcopy(self.cus)
+        self.store_cmds = copy.deepcopy(self.cmds)
+        self.store_atts = copy.deepcopy(self.atts)
 
     def get_rares(self):
         return self.rares
@@ -128,30 +114,31 @@ class CardPool():
 
     def pull_cmd(self):
         if len(self.cmds) == 0:
-            raise Exception("No commanders to pull from!")
+            self.cmds = copy.deepcopy(self.store_cmds)
 
         return self.cmds.pop(random.randint(0, len(self.cmds)-1))
 
     def pull_tcs(self):
         if len(self.tcs) == 0:
-            raise Exception("No tactics cards to pull from!")
+            self.tcs = copy.deepcopy(self.store_tcs)
 
         return self.tcs.pop(random.randint(0, len(self.tcs)-1))
 
     def pull_ncu(self):
         if len(self.ncus) == 0:
-            raise Exception("No NCUs to pull from!")
+            self.ncus = copy.deepcopy(self.store_ncus)
 
         return self.ncus.pop(random.randint(0, len(self.ncus)-1))
 
     def pull_cu(self):
         if len(self.cus) == 0:
-            raise Exception("No combat units to pull from!")
+            self.cus = copy.deepcopy(self.store_cus)
 
         return self.cus.pop(random.randint(0, len(self.cus)-1))
 
     def pull_att(self):
         if len(self.atts) == 0:
-            raise Exception("No attachments to pull from!")
+            self.atts = copy.deepcopy(self.store_atts)
+
 
         return self.atts.pop(random.randint(0, len(self.atts)-1))
